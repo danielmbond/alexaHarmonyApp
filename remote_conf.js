@@ -1,6 +1,6 @@
 module.exports = {
-    hub_ip : '10.0.0.3',
-    app_id : 'amzn1.echo-sdk-ams.app.19d2de62-7996-4228-b45a-2b8b7456e34e',
+    hub_ip : '',
+    app_id : '',
 //    Optional channel configuration
     channels : [
          {
