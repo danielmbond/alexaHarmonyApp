@@ -43,6 +43,8 @@ function execCmdDF(hutils, is_device, dev_or_act, cmd, cnt, fn, res) {
 function execCmd(dev, cmd, cnt, fn, res) {
     new HarmonyUtils(hub_ip).then(function (hutil) {
         execCmdDF(hutil, true, dev, cmd, cnt, fn, res);
+   request.connection.destroy()
+
     });
 }
 
@@ -52,6 +54,10 @@ function execCmdCurrentActivity(cmd, cnt, fn, res) {
             execCmdDF(hutils, false, current_activity, cmd, cnt, fn, res);
         });
     });
+}
+
+function sleep (time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
 }
 
 /**
@@ -121,10 +127,16 @@ function execActivityCmd(act, cmd, cnt) {
              execCmdCurrentActivity(cmd, 1, function (res) {
                 console.log('Command executed with result : ' + res);
                 hutils.end();
-             });
+                //race condition inc!
+                sleep(1500).then(() => {
+	            //xFinity makes you hit OK after entering the channel number
+            		execCmd('Xfinity DVR', 'Select', 1, function (res) {});
+                })
+             }); 
           }
        });
    });
+
 }
 
 function execActivity(act, fn) {
@@ -154,9 +166,11 @@ app.intent('IncreaseVolume',
         }
         res.say('Increasing volume by ' + amt);
         console.log('Increasing volume by ' + amt);
-        execCmdCurrentActivity('Volume,Volume Up', amt, function (res) {
-            console.log("Command Volume UP was executed with result : " + res);
+        //execCmdCurrentActivity('Volume,Volume Up', amt, function (res) {
+        execCmd('TV', 'VolumeUp', amt, function (res) {
+        console.log("Command Volume UP was executed with result : " + res);
         });
+		
     });
 app.intent('DecreaseVolume',
     {
@@ -170,138 +184,56 @@ app.intent('DecreaseVolume',
         }
         res.say('Decreasing volume by ' + amt);
         console.log('Decreasing volume by ' + amt);
-        execCmdCurrentActivity('Volume,Volume Down', amt, function (res) {
+        //execCmdCurrentActivity('Volume,Volume Down', amt, function (res) {
+        execCmd('TV', 'VolumeDown', amt, function (res) {
             console.log("Command Volume Down was executed with result : " + res);
         });
+				
     });
 
 app.intent('MuteVolume',
     {
         "slots" : {},
-        "utterances" : ["{mute|quiet|shut up|unmute}"]
+        "utterances" : ["{mute}"]
     },
     function (req, res) {
         res.say('Muting!');
         console.log('Muting!');
         execCmdCurrentActivity('Volume,Mute', 1, function (res) {
             console.log("Command Mute executed with result : " + res);
-        });
-    });
-
-
-app.intent('IncreaseTVVolume',
-    {
-        "slots" : {'AMOUNT' : 'NUMBER'},
-        "utterances" : ["{increase|} TV volume by {1-9|AMOUNT}"]
-    },
-    function (req, res) {
-        var amt = parseInt(req.slot('AMOUNT'), 10);
-        if (isNaN(amt)) {
-            amt = 1;
-        }
-        res.say('Increasing TV volume by ' + amt);
-        console.log('Increasing volume by ' + amt);
-        execCmd('TV', 'VolumeUp', amt, function (res) {
-            console.log("Command Volume UP was executed with result : " + res);
-        });
-    });
-app.intent('DecreaseTVVolume',
-    {
-        "slots" : {'AMOUNT' : 'NUMBER'},
-        "utterances" : ["{decrease TV volume|reduce TV volume} by {1-9|AMOUNT}"]
-    },
-    function (req, res) {
-        var amt = parseInt(req.slot('AMOUNT'), 10);
-        if (isNaN(amt)) {
-            amt = 1;
-        }
-        res.say('Decreasing TV volume by ' + amt);
-        console.log('Decreasing volume by ' + amt);
-        execCmd('TV', 'VolumeDown', amt, function (res) {
-            console.log("Command Volume Down was executed with result : " + res);
+		
         });
     });
 
 app.intent('MuteTVVolume',
     {
         "slots" : {},
-        "utterances" : ["{mute|unmute} {TV|telivision}"]
+        "utterances" : ["{mute} {TV|telivision}"]
     },
     function (req, res) {
         res.say('Muting TV!');
         console.log('Muting!');
         execCmd('TV', 'Mute', 1, function (res) {
             console.log("Command Mute executed with result : " + res);
+		
         });
     });
 
 
-app.intent('TurnOffTV',
+app.intent('Power',
     {
         "slots" : {},
-        "utterances" : ["{turn the TV off|turn TV off}"]
+        "utterances" : ["{power|tv power}"]
     },
     function (req, res) {
-        res.say('Turning TV off!');
-        console.log('Turning TV off!');
-        execCmd('TV', 'PowerOff', 1, function (res) {
-            console.log("Command TV PowerOff executed with result : " + res);
+        res.say('Toggling TV Power!');
+        console.log('Toggling TV Power!');
+        execCmd('TV', 'PowerToggle', 1, function (res) {
+            console.log("Command Power executed with result : " + res);
         });
+		
     });
-
-app.intent('TurnOnTV',
-    {
-        "slots" : {},
-        "utterances" : ["{turn on the TV|turn the TV on|turn on TV|turn TV on}"]
-    },
-    function (req, res) {
-        res.say('Turning TV on!');
-        console.log('Turning TV on!');
-        execCmd('TV', 'PowerOn', 1, function (res) {
-            console.log("Command TV PowerOn executed with result : " + res);
-        });
-    });
-
-app.intent('TurnOffAmplifier',
-    {
-        "slots" : {},
-        "utterances" : ["{turn the amplifer off|turn amplifier off}"]
-    },
-    function (req, res) {
-        res.say('Turning amplifer off!');
-        console.log('Turning amplifier off!');
-        execCmd('Amplifier', 'PowerToggle', 1, function (res) {
-            console.log("Command for amplifer PowerToggle executed with result : " + res);
-        });
-    });
-
-app.intent('TurnOnAmplifier',
-    {
-        "slots" : {},
-        "utterances" : ["{turn on the amplifier|turn the amplifier on}"]
-    },
-    function (req, res) {
-        res.say('Toggle power on the amplifier!');
-        console.log('Turning amplifier on!');
-        execCmd('Amplifier', 'PowerToggle', 1, function (res) {
-            console.log("Command Amplifier PowerToggle executed with result : " + res);
-        });
-    });
-
-app.intent('AmplifierInputNext',
-    {
-        "slots" : {},
-        "utterances" : ["{select next amplifier input}"]
-    },
-    function (req, res) {
-        res.say('selecting next input on amplifier!');
-        console.log('Selecting next amplifier input!');
-        execCmd('Amplifier', 'InputNext', 1, function (res) {
-            console.log("Command Amplifier InputNext executed with result : " + res);
-        });
-    });
-
-
+/*
 app.intent('SelectChromeCast',
     {
         "slots" : {},
@@ -368,20 +300,133 @@ app.intent('Movie',
         });
     });
 
-
-app.intent('TIVO',
+*/
+app.intent('AppleTV',
     {
         "slots" : {},
-        "utterances" : ["{tivo|start tivo|watch tivo}"]
+        "utterances" : ["{apple tv|start apple tv|watch apple tv}"]
     },
     function (req, res) {
-        res.say('Turning on Tivo Mode!');
-        console.log('Turning on Tivo Mode!');
-        execActivity('Watch Tivo', function (res) {
-            console.log("Command to Watch Tivo executed with result : " + res);
+        res.say('Turning on Apple TV!');
+        console.log('Turning on Apple TV!');
+        execActivity('Watch Apple TV', function (res) {
+            console.log("Command to Watch Apple TV executed with result : " + res);
+        });		
+    });
+	
+app.intent('MoveUp',
+    {
+        "slots" : {'AMOUNT' : 'NUMBER'},
+        "utterances" : ["{move up|} {by|} {1-9|AMOUNT}"]
+    },
+    function (req, res) {
+        var amt = parseInt(req.slot('AMOUNT'), 10);
+        if (isNaN(amt)) {
+            amt = 1;
+        }
+        res.say('Moving up by ' + amt);
+        console.log('Moving Up by ' + amt);
+        execCmd('Apple TV', 'DirectionUp', amt, function (res) {
+        console.log("Command Direction Up was executed with result : " + res);
         });
     });
 
+app.intent('MoveDown',
+    {
+        "slots" : {'AMOUNT' : 'NUMBER'},
+        "utterances" : ["{move down|} {by|} {1-9|AMOUNT}"]
+    },
+    function (req, res) {
+        var amt = parseInt(req.slot('AMOUNT'), 10);
+        if (isNaN(amt)) {
+            amt = 1;
+        }
+        res.say('Moving down by ' + amt);
+        console.log('Moving Down by ' + amt);
+        execCmd('Apple TV', 'DirectionDown', amt, function (res) {
+        console.log("Command Direction Down was executed with result : " + res);
+        });
+    });
+app.intent('MoveRight',
+    {
+        "slots" : {'AMOUNT' : 'NUMBER'},
+        "utterances" : ["{move right|} {by|} {1-9|AMOUNT}"]
+    },
+    function (req, res) {
+        var amt = parseInt(req.slot('AMOUNT'), 10);
+        if (isNaN(amt)) {
+            amt = 1;
+        }
+        res.say('Moving right by ' + amt);
+        console.log('Moving Right by ' + amt);
+        execCmd('Apple TV', 'DirectionRight', amt, function (res) {
+        console.log("Command Direction Right was executed with result : " + res);
+        });
+    });
+
+app.intent('MoveLeft',
+    {
+        "slots" : {'AMOUNT' : 'NUMBER'},
+        "utterances" : ["{move left|} {by|} {1-9|AMOUNT}"]
+    },
+    function (req, res) {
+        var amt = parseInt(req.slot('AMOUNT'), 10);
+        if (isNaN(amt)) {
+            amt = 1;
+        }
+        res.say('Moving left by ' + amt);
+        console.log('Moving Left by ' + amt);
+        execCmd('Apple TV', 'DirectionLeft', amt, function (res) {
+        console.log("Command Direction Left was executed with result : " + res);
+        });
+    });
+app.intent('SelectOk',
+    {
+        "slots" : {'AMOUNT' : 'NUMBER'},
+        "utterances" : ["{select ok|ok|select} {by|} {1-9|AMOUNT}"]
+    },
+    function (req, res) {
+        var amt = parseInt(req.slot('AMOUNT'), 10);
+        if (isNaN(amt)) {
+            amt = 1;
+        }
+        res.say('Selecting OK ' + amt);
+        console.log('OK ' + amt);
+        execCmd('Apple TV', 'Select', amt, function (res) {
+        console.log("Command OK was executed with result : " + res);
+        });
+    });
+app.intent('Back',
+    {
+        "slots" : {'AMOUNT' : 'NUMBER'},
+        "utterances" : ["{back|} {by|} {1-9|AMOUNT}"]
+    },
+    function (req, res) {
+        var amt = parseInt(req.slot('AMOUNT'), 10);
+        if (isNaN(amt)) {
+            amt = 1;
+        }
+        res.say('Going back ' + amt);
+        console.log('Going back ' + amt);
+        execCmd('Apple TV', 'Menu', amt, function (res) {
+        console.log("Command Menu was executed with result : " + res);
+        });
+    });
+
+app.intent('Cable',
+    {
+        "slots" : {},
+        "utterances" : ["{cable|start cable|watch cable}"]
+    },
+    function (req, res) {
+        res.say('Turning on Cable TV!');
+        console.log('Turning on Cable TV!');
+        execActivity('Watch TV', function (res) {
+            console.log("Command to Watch Cable TV executed with result : " + res);
+        });
+		
+    });
+/*
 app.intent('Music',
     {
         "slots" : {},
@@ -394,7 +439,7 @@ app.intent('Music',
             console.log("Command to Music executed with result : " + res);
         });
     });
-
+*/
 /**
  * Creates an intent function for a specific channel configuration
  * 
